@@ -90,18 +90,37 @@ export function createSupabaseApi(url, anonKey) {
       const uid = await currentUserId()
 
       let photo_url = null
+      let photoPath = null
       if (photoFile) {
         const blob = await compressImage(photoFile)
-        const path = `${uid}/${crypto.randomUUID()}.jpg`
-        check(await supabase.storage.from('produce-photos').upload(path, blob, { contentType: 'image/jpeg' }))
-        photo_url = supabase.storage.from('produce-photos').getPublicUrl(path).data.publicUrl
+        photoPath = `${uid}/${crypto.randomUUID()}.jpg`
+        check(await supabase.storage.from('produce-photos').upload(photoPath, blob, { contentType: 'image/jpeg' }))
+        photo_url = supabase.storage.from('produce-photos').getPublicUrl(photoPath).data.publicUrl
       }
 
-      const listing = check(
-        await supabase.from('listings').insert({ ...fields, photo_url }).select().single()
-      )
-      check(await supabase.from('listing_pickups').insert({ listing_id: listing.id, ...pickup }))
-      return listing
+      try {
+        // One database call saves the listing AND its private pickup details
+        // together, so a failure can never leave a listing without an address.
+        const id = check(
+          await supabase.rpc('create_listing', {
+            p_title: fields.title,
+            p_category: fields.category,
+            p_quantity: fields.quantity,
+            p_description: fields.description,
+            p_photo_url: photo_url,
+            p_approx_lat: fields.approx_lat,
+            p_approx_lng: fields.approx_lng,
+            p_expires_at: fields.expires_at,
+            p_address: pickup.address,
+            p_instructions: pickup.instructions
+          })
+        )
+        return { id }
+      } catch (err) {
+        // The listing wasn't saved, so don't leave its photo behind.
+        if (photoPath) await supabase.storage.from('produce-photos').remove([photoPath]).catch(() => {})
+        throw err
+      }
     },
 
     async setListingStatus(listingId, status) {
