@@ -160,7 +160,10 @@ function acceptRequest(requestId) {
   const listing = db.listings.find((l) => l.id === r.listing_id)
   listing.status = 'claimed'
   for (const other of db.requests) {
-    if (other.listing_id === r.listing_id && other.id !== r.id && other.status === 'pending') other.status = 'declined'
+    if (other.listing_id === r.listing_id && other.id !== r.id && other.status === 'pending') {
+      other.status = 'declined'
+      other.auto_declined = true // so they can come back if this neighbor cancels
+    }
   }
 }
 
@@ -315,7 +318,23 @@ export function createDemoApi() {
     async cancelRequest(requestId) {
       const user = requireUser()
       const r = db.requests.find((x) => x.id === requestId && x.requester_id === user.id)
-      if (r) r.status = 'cancelled'
+      if (!r) throw new Error('That request was not found.')
+      if (r.status !== 'pending' && r.status !== 'accepted') throw new Error('That request is already closed.')
+      const wasAccepted = r.status === 'accepted'
+      r.status = 'cancelled'
+      if (wasAccepted) {
+        // Same as the real database: reopen the listing (unless the grower
+        // already marked it gone) and bring back requests that were only
+        // declined because this one was accepted.
+        const listing = db.listings.find((l) => l.id === r.listing_id)
+        if (listing?.status === 'claimed') listing.status = 'available'
+        for (const other of db.requests) {
+          if (other.listing_id === r.listing_id && other.status === 'declined' && other.auto_declined) {
+            other.status = 'pending'
+            other.auto_declined = false
+          }
+        }
+      }
       save(db)
     }
   }

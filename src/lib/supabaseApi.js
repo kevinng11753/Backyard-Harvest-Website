@@ -155,8 +155,10 @@ export function createSupabaseApi(url, anonKey) {
       check(await supabase.rpc('respond_to_request', { request_id: requestId, decision }))
     },
 
+    // Cancelling an accepted request also reopens the listing for others,
+    // so it goes through a database function rather than a plain update.
     async cancelRequest(requestId) {
-      check(await supabase.from('requests').update({ status: 'cancelled' }).eq('id', requestId))
+      check(await supabase.rpc('cancel_request', { request_id: requestId }))
     }
   }
 }

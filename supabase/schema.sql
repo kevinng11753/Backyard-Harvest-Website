@@ -79,6 +79,7 @@ create table public.requests (
   requester_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
   message      text check (char_length(message) <= 200),
   status       text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'cancelled')),
+  auto_declined boolean not null default false,   -- declined automatically because another request was accepted
   created_at   timestamptz not null default now(),
   unique (listing_id, requester_id)   -- one request per person per listing
 );
@@ -161,11 +162,8 @@ create policy "Request available produce"
     )
   );
 
--- A requester may cancel their own request (and nothing else).
-create policy "Cancel your own request"
-  on public.requests for update to authenticated
-  using (requester_id = auth.uid())
-  with check (requester_id = auth.uid() and status = 'cancelled');
+-- Cancelling goes through cancel_request() (below), not a direct update,
+-- so that cancelling an accepted request can reopen the listing.
 
 -- Accepting or declining goes through this function so that accepting
 -- one request also marks the listing claimed and declines the others,
@@ -195,13 +193,46 @@ begin
 
   if decision = 'accepted' then
     update listings set status = 'claimed' where id = target_listing;
-    update requests set status = 'declined'
+    update requests set status = 'declined', auto_declined = true
       where listing_id = target_listing and id <> request_id and status = 'pending';
   end if;
 end;
 $$;
 
 grant execute on function public.respond_to_request(uuid, text) to authenticated;
+
+-- Cancel your own request. If it was the accepted one, reopen the listing
+-- (unless the grower already marked it "gone") and bring back the requests
+-- that were declined only because this one was accepted.
+create function public.cancel_request(request_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  r record;
+begin
+  select id, listing_id, status into r
+  from requests where id = request_id and requester_id = auth.uid();
+
+  if not found then
+    raise exception 'That request was not found';
+  end if;
+  if r.status not in ('pending', 'accepted') then
+    raise exception 'That request is already closed';
+  end if;
+
+  update requests set status = 'cancelled' where id = r.id;
+
+  if r.status = 'accepted' then
+    update listings set status = 'available' where id = r.listing_id and status = 'claimed';
+    update requests set status = 'pending', auto_declined = false
+      where listing_id = r.listing_id and status = 'declined' and auto_declined;
+  end if;
+end;
+$$;
+
+revoke execute on function public.cancel_request(uuid) from public;
+grant execute on function public.cancel_request(uuid) to authenticated;
 
 -- =====================================================================
 -- PHOTO STORAGE

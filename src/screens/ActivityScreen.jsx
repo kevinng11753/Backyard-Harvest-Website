@@ -101,7 +101,21 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
                 </p>
                 <p className={`badge badge-${r.status}`}>{REQUEST_STATUS[r.status]}</p>
                 {r.status === 'accepted' && (
-                  <PickupDetails grower={firstName(r.listing?.owner?.display_name)} pickup={r.pickup} />
+                  <>
+                    <PickupDetails grower={firstName(r.listing?.owner?.display_name)} pickup={r.pickup} />
+                    <button
+                      className="btn btn-quiet btn-small"
+                      disabled={busyId === r.id}
+                      onClick={() => {
+                        const what = r.listing?.title?.toLowerCase() ?? 'this'
+                        if (window.confirm(`Give up the ${what}? It will go back to the neighborhood so someone else can ask for it.`)) {
+                          act(r.id, () => api.cancelRequest(r.id), 'Released. It’s open to other neighbors again.')
+                        }
+                      }}
+                    >
+                      Can’t make it
+                    </button>
+                  </>
                 )}
                 {r.status === 'pending' && (
                   <button
