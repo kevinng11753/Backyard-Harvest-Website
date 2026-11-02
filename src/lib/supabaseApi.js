@@ -3,6 +3,7 @@
 // know which one they're using.
 import { createClient } from '@supabase/supabase-js'
 import { compressImage } from './image.js'
+import { boundingBox, NEARBY_RADIUS_MILES } from './geo.js'
 
 export function createSupabaseApi(url, anonKey) {
   const supabase = createClient(url, anonKey)
@@ -62,13 +63,20 @@ export function createSupabaseApi(url, anonKey) {
     },
 
     // ---------- Browsing ----------
-    async listActive() {
+    // Only listings inside a box around `location`, so far-away listings can
+    // never crowd nearby ones out of the 200-row limit.
+    async listActive(location, radiusMiles = NEARBY_RADIUS_MILES) {
+      const box = boundingBox(location, radiusMiles)
       return check(
         await supabase
           .from('listings')
           .select('*, owner:profiles(display_name, neighborhood)')
           .eq('status', 'available')
           .gt('expires_at', new Date().toISOString()) // auto-expire: old listings simply stop showing
+          .gte('approx_lat', box.minLat)
+          .lte('approx_lat', box.maxLat)
+          .gte('approx_lng', box.minLng)
+          .lte('approx_lng', box.maxLng)
           .order('created_at', { ascending: false })
           .limit(200)
       )

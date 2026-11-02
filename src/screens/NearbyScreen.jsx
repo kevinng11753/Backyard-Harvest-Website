@@ -1,20 +1,21 @@
 import { useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { useLoad } from '../lib/useLoad.js'
-import { distanceMiles } from '../lib/geo.js'
+import { distanceMiles, NEARBY_RADIUS_MILES } from '../lib/geo.js'
 import { CATEGORIES } from '../lib/produce.js'
 import ListingCard from '../components/ListingCard.jsx'
 
 export default function NearbyScreen({ location, userId, refreshKey, onOpen, onPost }) {
   const [filter, setFilter] = useState('all')
   const [retry, setRetry] = useState(0)
-  const { data, error, loading } = useLoad(() => api.listActive(), [refreshKey, retry])
+  const { data, error, loading } = useLoad(() => api.listActive(location), [refreshKey, retry, location.lat, location.lng])
 
-  // Closest first, then apply the category filter.
+  // Keep only what's within range, closest first, then apply the category filter.
   const listings = useMemo(() => {
     if (!data) return []
     return data
       .map((l) => ({ l, d: distanceMiles(location, { lat: l.approx_lat, lng: l.approx_lng }) }))
+      .filter(({ d }) => d <= NEARBY_RADIUS_MILES)
       .filter(({ l }) => filter === 'all' || l.category === filter)
       .sort((a, b) => a.d - b.d)
       .map(({ l }) => l)
@@ -51,7 +52,7 @@ export default function NearbyScreen({ location, userId, refreshKey, onOpen, onP
         <div className="empty">
           <p>
             {filter === 'all'
-              ? 'Nothing is listed near you yet. Got extra from your garden? Be the first.'
+              ? `Nothing is listed within ${NEARBY_RADIUS_MILES} miles yet. Got extra from your garden? Be the first.`
               : 'None of these nearby right now. Try another type, or check back tomorrow.'}
           </p>
           {filter === 'all' && <button className="btn btn-primary" onClick={onPost}>Share something</button>}
@@ -70,6 +71,7 @@ export default function NearbyScreen({ location, userId, refreshKey, onOpen, onP
         <span className="dot dot-fresh" /> Fresh <span className="dot dot-soon" /> Going soon{' '}
         <span className="dot dot-last" /> Last chance
       </p>
+      <p className="note small">Showing listings within {NEARBY_RADIUS_MILES} miles.</p>
     </section>
   )
 }

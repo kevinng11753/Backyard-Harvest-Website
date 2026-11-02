@@ -35,6 +35,18 @@ export function blurLocation({ lat, lng }) {
   }
 }
 
+// How far "nearby" reaches. Listings farther than this aren't shown.
+export const NEARBY_RADIUS_MILES = 10
+
+// A square around a point, used to ask the database for only the listings
+// that could be in range (so it never has to send the whole world).
+// The exact circle is applied afterwards with distanceMiles().
+export function boundingBox({ lat, lng }, miles = NEARBY_RADIUS_MILES) {
+  const dLat = miles / 69 // about 69 miles per degree of latitude
+  const dLng = miles / (69 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01))
+  return { minLat: lat - dLat, maxLat: lat + dLat, minLng: lng - dLng, maxLng: lng + dLng }
+}
+
 // Straight-line distance between two points in miles (haversine formula).
 export function distanceMiles(a, b) {
   const R = 3958.8

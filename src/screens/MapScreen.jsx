@@ -2,12 +2,16 @@ import { MapContainer, TileLayer, Circle, CircleMarker, Tooltip } from 'react-le
 import { api } from '../lib/api.js'
 import { useLoad } from '../lib/useLoad.js'
 import { freshness } from '../lib/produce.js'
+import { distanceMiles, NEARBY_RADIUS_MILES } from '../lib/geo.js'
 
 // Ring colors, matching the freshness ring on each photo.
 const COLORS = { fresh: '#2f7d4a', soon: '#d99a0b', last: '#d2412c' }
 
 export default function MapScreen({ location, refreshKey, onOpen }) {
-  const { data } = useLoad(() => api.listActive(), [refreshKey])
+  const { data } = useLoad(() => api.listActive(location), [refreshKey, location.lat, location.lng])
+  const inRange = data?.filter(
+    (l) => distanceMiles(location, { lat: l.approx_lat, lng: l.approx_lng }) <= NEARBY_RADIUS_MILES
+  )
 
   return (
     <section className="map-screen">
@@ -30,7 +34,7 @@ export default function MapScreen({ location, refreshKey, onOpen }) {
 
           {/* Each listing is a soft circle, not a pin: it shows the general
               area only, so a grower's exact house stays private. */}
-          {data?.map((l) => {
+          {inRange?.map((l) => {
             const color = COLORS[freshness(l).level]
             return (
               <Circle

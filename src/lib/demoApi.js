@@ -2,7 +2,7 @@
 // saved in this browser's localStorage. It lets you (and judges) try
 // the whole app before Supabase is connected. Nothing leaves the device.
 import { compressImage, blobToDataUrl } from './image.js'
-import { getCurrentPosition, blurLocation } from './geo.js'
+import { getCurrentPosition, blurLocation, distanceMiles, NEARBY_RADIUS_MILES } from './geo.js'
 
 const KEY = 'backyard-harvest-demo-v1'
 const HOUR = 60 * 60 * 1000
@@ -213,7 +213,7 @@ export function createDemoApi() {
     },
 
     // ---------- Browsing ----------
-    async listActive() {
+    async listActive(location, radiusMiles = NEARBY_RADIUS_MILES) {
       await wait(150)
       await seedIfNeeded()
       autoAnswerRequests()
@@ -221,6 +221,7 @@ export function createDemoApi() {
       return clone(
         db.listings
           .filter((l) => l.status === 'available' && new Date(l.expires_at).getTime() > now)
+          .filter((l) => !location || distanceMiles(location, { lat: l.approx_lat, lng: l.approx_lng }) <= radiusMiles)
           .sort((a, b) => b.created_at.localeCompare(a.created_at))
           .map((l) => ({ ...l, owner: profileOf(l.owner_id) }))
       )
