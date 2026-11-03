@@ -6,6 +6,7 @@ import { CATEGORIES } from '../lib/produce.js'
 import ListingCard from '../components/ListingCard.jsx'
 import PublicListingSheet from '../components/PublicListingSheet.jsx'
 import AppLink from '../components/AppLink.jsx'
+import ImpactPanel from '../components/ImpactPanel.jsx'
 
 // The home page for people who aren't signed in: everything that's
 // available right now. Looking is open to anyone; asking needs an account.
@@ -70,6 +71,8 @@ export default function PublicHome({ demo, onAuth, notice }) {
           <button className="btn btn-primary" onClick={() => onAuth('signup')}>Create a free account</button>
         </div>
       </section>
+
+      <ImpactPanel />
 
       <main className="screen">
         <h2 className="section-title">Available now</h2>

@@ -555,3 +555,36 @@ $$;
 
 revoke execute on function public.submit_report(uuid, uuid, text, text) from public, anon;
 grant execute on function public.submit_report(uuid, uuid, text, text) to authenticated;
+
+-- =====================================================================
+-- IMPACT STATS — counts of shares, for the impact panel
+-- (Same function as supabase/migrations/20261104_impact_stats.sql)
+-- =====================================================================
+create or replace function public.impact_stats()
+returns jsonb
+language sql stable
+security definer set search_path = public
+as $$
+  with shared as (
+    select distinct on (l.id) l.id, l.category, l.owner_id, r.requester_id
+    from listings l
+    join requests r on r.listing_id = l.id and r.status = 'accepted'
+  )
+  select jsonb_build_object(
+    'community', coalesce((
+      select jsonb_object_agg(category, n)
+      from (select category, count(*) as n from shared group by category) c
+    ), '{}'::jsonb),
+    'given', coalesce((
+      select jsonb_object_agg(category, n)
+      from (select category, count(*) as n from shared where owner_id = auth.uid() group by category) c
+    ), '{}'::jsonb),
+    'received', coalesce((
+      select jsonb_object_agg(category, n)
+      from (select category, count(*) as n from shared where requester_id = auth.uid() group by category) c
+    ), '{}'::jsonb)
+  );
+$$;
+
+revoke execute on function public.impact_stats() from public;
+grant execute on function public.impact_stats() to anon, authenticated;

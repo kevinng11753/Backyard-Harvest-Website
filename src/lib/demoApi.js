@@ -293,6 +293,22 @@ export function createDemoApi() {
       )
     },
 
+    // Counts of accepted shares per category, like the database function does.
+    async impactStats() {
+      await wait(100)
+      const uid = me()?.id
+      const stats = { community: {}, given: {}, received: {} }
+      const bump = (bucket, category) => (bucket[category] = (bucket[category] ?? 0) + 1)
+      for (const l of db.listings) {
+        const accepted = db.requests.find((r) => r.listing_id === l.id && r.status === 'accepted')
+        if (!accepted) continue
+        bump(stats.community, l.category)
+        if (l.owner_id === uid) bump(stats.given, l.category)
+        if (accepted.requester_id === uid) bump(stats.received, l.category)
+      }
+      return stats
+    },
+
     // ---------- Your listings ----------
     async myListings() {
       const user = requireUser()

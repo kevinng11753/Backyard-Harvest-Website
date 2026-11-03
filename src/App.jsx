@@ -11,6 +11,7 @@ import MapScreen from './screens/MapScreen.jsx'
 import PostScreen from './screens/PostScreen.jsx'
 import ActivityScreen from './screens/ActivityScreen.jsx'
 import ListingSheet from './components/ListingSheet.jsx'
+import ImpactPanel from './components/ImpactPanel.jsx'
 import TabBar from './components/TabBar.jsx'
 import Toast from './components/Toast.jsx'
 
@@ -181,6 +182,8 @@ export default function App() {
       {api.mode === 'demo' && (
         <p className="demo-note">Demo mode: everything stays in this browser.</p>
       )}
+
+      <ImpactPanel refreshKey={`${refreshKey}-${tab}`} signedIn hideNarrow={tab !== 'nearby'} />
 
       <main className="screen">
         {!location ? (

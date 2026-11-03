@@ -119,6 +119,12 @@ export function createSupabaseApi(url, anonKey) {
       return check(await supabase.rpc('public_listings')) ?? []
     },
 
+    // Counts of accepted shares per category: for the whole neighborhood, and
+    // (when signed in) the ones you gave and received. Open to signed-out visitors.
+    async impactStats() {
+      return check(await supabase.rpc('impact_stats'))
+    },
+
     // ---------- Your listings ----------
     async myListings() {
       const uid = await currentUserId()
