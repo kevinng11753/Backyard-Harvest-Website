@@ -230,8 +230,10 @@ function Privacy() {
         </li>
         <li>Listings that expire stop showing up, but aren’t removed automatically. You can delete them yourself.</li>
         <li>
-          To delete your account and everything tied to it, ask us using the contact below. Providers may keep
-          routine backups for a short while.
+          You can delete your account yourself: open the Activity tab and choose Delete my account. That removes your
+          profile and sign-in, every listing you posted with its photo and pickup details, and your requests.
+          Providers may keep routine backups for a short while.
+          {SITE.contactEmail ? ' If you can’t sign in, write to the contact below and we’ll help.' : ''}
         </li>
       </ul>
 

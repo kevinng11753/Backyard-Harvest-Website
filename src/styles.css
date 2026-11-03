@@ -1159,3 +1159,47 @@ p {
 .account-legal {
   margin: 10px 0 0;
 }
+
+/* ---------- Account deletion ---------- */
+.btn-danger {
+  background: var(--last);
+  color: #fff;
+  width: 100%;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b3321f;
+}
+
+.btn-quiet-danger {
+  color: var(--last);
+}
+
+.btn-quiet-danger:hover:not(:disabled) {
+  border-color: var(--last);
+}
+
+.delete-list {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.delete-list li {
+  margin-bottom: 6px;
+}
+
+.delete-warning {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-s);
+  background: var(--last-tint);
+  font-weight: 700;
+}
+
+.notice {
+  margin: 0 16px 8px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background: var(--leaf-tint);
+  border-radius: var(--radius-s);
+}

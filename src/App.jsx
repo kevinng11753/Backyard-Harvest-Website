@@ -28,6 +28,8 @@ export default function App() {
   // null = public home; 'signin' | 'signup' | 'forgot' = the sign-in screen.
   // An expired reset link lands straight on the "forgot password" form.
   const [authMode, setAuthMode] = useState(resetLinkExpired ? 'forgot' : null)
+  // True right after someone deletes their account, so the home page can say it's done.
+  const [farewell, setFarewell] = useState(false)
   // True while someone who followed a reset email is choosing a new password.
   const [recovering, setRecovering] = useState(startedInRecovery)
   const [toast, setToast] = useState(null)
@@ -42,7 +44,10 @@ export default function App() {
         .getUser()
         .then((u) => {
           setUser(u)
-          if (u) setAuthMode(null) // signed in: leave the sign-in screen behind
+          if (u) {
+            setAuthMode(null) // signed in: leave the sign-in screen behind
+            setFarewell(false)
+          }
         })
         .catch(() => setUser(null))
     load()
@@ -130,7 +135,13 @@ export default function App() {
     if (authMode) {
       return <AuthScreen demo={api.mode === 'demo'} initialMode={authMode} onBack={() => setAuthMode(null)} />
     }
-    return <PublicHome demo={api.mode === 'demo'} onAuth={setAuthMode} />
+    return (
+      <PublicHome
+        demo={api.mode === 'demo'}
+        onAuth={setAuthMode}
+        notice={farewell ? 'Your account has been deleted. Thanks for sharing the harvest.' : null}
+      />
+    )
   }
 
   return (
@@ -167,7 +178,16 @@ export default function App() {
             }}
           />
         ) : (
-          <ActivityScreen user={user} refreshKey={refreshKey} onChanged={refresh} onToast={showToast} />
+          <ActivityScreen
+            user={user}
+            refreshKey={refreshKey}
+            onChanged={refresh}
+            onToast={showToast}
+            onAccountDeleted={() => {
+              setFarewell(true)
+              setTab('nearby')
+            }}
+          />
         )}
       </main>
 

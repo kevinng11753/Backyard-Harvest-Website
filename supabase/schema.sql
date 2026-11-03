@@ -275,6 +275,36 @@ revoke execute on function public.public_listings() from public;
 grant execute on function public.public_listings() to anon, authenticated;
 
 -- =====================================================================
+-- ACCOUNT DELETION AND PHOTO CLEAN-UP
+-- (Same as supabase/migrations/20261102_account_deletion.sql)
+-- =====================================================================
+-- People can see their own photo files, which removing them requires.
+-- The bucket is public, so photos still load for anyone with the link.
+create policy "See your own photo files"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'produce-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Delete my account: removes the sign-in account, and the profile, listings,
+-- pickup details and requests go with it (on delete cascade). Photo files
+-- aren't covered by that, so the app deletes them first.
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Please sign in again.';
+  end if;
+
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.delete_my_account() from public;
+grant execute on function public.delete_my_account() to authenticated;
+
+-- =====================================================================
 -- PHOTO STORAGE
 -- Photos are public (anyone with the link can view them), but people
 -- can only upload into a folder named after their own user id.

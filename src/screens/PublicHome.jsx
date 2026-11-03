@@ -9,7 +9,7 @@ import AppLink from '../components/AppLink.jsx'
 
 // The home page for people who aren't signed in: everything that's
 // available right now. Looking is open to anyone; asking needs an account.
-export default function PublicHome({ demo, onAuth }) {
+export default function PublicHome({ demo, onAuth, notice }) {
   const [filter, setFilter] = useState('all')
   const [retry, setRetry] = useState(0)
   const [location, setLocation] = useState(null)
@@ -58,6 +58,7 @@ export default function PublicHome({ demo, onAuth }) {
       </header>
 
       {demo && <p className="demo-note">Demo mode: everything stays in this browser.</p>}
+      {notice && <p className="notice" role="status">{notice}</p>}
 
       <section className="public-hero">
         <h1>Fresh from your neighbors’ gardens</h1>

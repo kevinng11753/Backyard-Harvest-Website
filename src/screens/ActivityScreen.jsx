@@ -7,6 +7,7 @@ import ProduceThumb from '../components/ProduceThumb.jsx'
 import PickupDetails from '../components/PickupDetails.jsx'
 import EditListingSheet from '../components/EditListingSheet.jsx'
 import AppLink from '../components/AppLink.jsx'
+import DeleteAccountSheet from '../components/DeleteAccountSheet.jsx'
 
 const REQUEST_STATUS = {
   pending: 'Waiting for an answer',
@@ -15,7 +16,7 @@ const REQUEST_STATUS = {
   cancelled: 'You cancelled'
 }
 
-export default function ActivityScreen({ user, refreshKey, onChanged, onToast }) {
+export default function ActivityScreen({ user, refreshKey, onChanged, onToast, onAccountDeleted }) {
   // Check for new answers every 5 seconds while this screen is open.
   const [tick, setTick] = useState(0)
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null) // the listing being edited, if any
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   async function act(id, action, message) {
     setBusyId(id)
@@ -204,11 +206,18 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
         </p>
         <div className="row-actions">
           <button className="btn btn-quiet btn-small" onClick={() => api.signOut()}>Sign out</button>
+          <button className="btn btn-quiet btn-small btn-quiet-danger" onClick={() => setDeletingAccount(true)}>
+            Delete my account
+          </button>
           {api.mode === 'demo' && (
             <button className="btn btn-quiet btn-small" onClick={resetDemo}>Reset demo data</button>
           )}
         </div>
       </div>
+
+      {deletingAccount && (
+        <DeleteAccountSheet onClose={() => setDeletingAccount(false)} onDeleted={onAccountDeleted} />
+      )}
 
       {editing && (
         <EditListingSheet

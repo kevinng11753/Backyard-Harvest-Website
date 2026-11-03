@@ -74,6 +74,24 @@ export function createSupabaseApi(url, anonKey) {
       check(await supabase.auth.updateUser({ password }))
     },
 
+    // Permanently deletes the signed-in person's account and everything tied to
+    // it. The password is checked again first, so a stranger at an unattended,
+    // signed-in device can't do this. Photo files go first because they don't
+    // disappear with the account; then one database call removes the account,
+    // and with it the profile, listings, pickup details and requests.
+    async deleteAccount(password) {
+      const uid = await currentUserId()
+      const { data } = await supabase.auth.getSession()
+      const email = data.session?.user?.email
+      const { error: passwordError } = await supabase.auth.signInWithPassword({ email, password })
+      if (passwordError) throw new Error('That password doesn’t match.')
+
+      await removeAllPhotosOf(supabase, uid)
+      check(await supabase.rpc('delete_my_account'))
+      // The account no longer exists on the server, so only clear this device.
+      await supabase.auth.signOut({ scope: 'local' })
+    },
+
     // ---------- Browsing ----------
     // Only listings inside a box around `location`, so far-away listings can
     // never crowd nearby ones out of the 200-row limit.
@@ -216,6 +234,23 @@ export function createSupabaseApi(url, anonKey) {
     async cancelRequest(requestId) {
       check(await supabase.rpc('cancel_request', { request_id: requestId }))
     }
+  }
+}
+
+// Delete every photo file a person has uploaded (they live in a folder named
+// after their user id). Best effort: it never stops the account deletion.
+async function removeAllPhotosOf(supabase, uid) {
+  try {
+    for (let round = 0; round < 20; round++) {
+      const { data: files, error } = await supabase.storage.from('produce-photos').list(uid, { limit: 100 })
+      if (error || !files?.length) return
+      const { error: removeError } = await supabase.storage
+        .from('produce-photos')
+        .remove(files.map((f) => `${uid}/${f.name}`))
+      if (removeError) return
+    }
+  } catch {
+    // Leave any stragglers rather than block the deletion.
   }
 }
 

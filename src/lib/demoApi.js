@@ -234,6 +234,23 @@ export function createDemoApi() {
       notify('USER_UPDATED')
     },
 
+    // Same as the real thing: check the password, then remove the account and
+    // everything tied to it (listings, their pickup details, and requests
+    // made by the person or on their listings).
+    async deleteAccount(password) {
+      const user = requireUser()
+      await wait()
+      if (user.password !== password) throw new Error('That password doesn’t match.')
+      const mine = new Set(db.listings.filter((l) => l.owner_id === user.id).map((l) => l.id))
+      db.listings = db.listings.filter((l) => !mine.has(l.id))
+      mine.forEach((listingId) => delete db.pickups[listingId])
+      db.requests = db.requests.filter((r) => r.requester_id !== user.id && !mine.has(r.listing_id))
+      db.users = db.users.filter((u) => u.id !== user.id)
+      db.sessionUserId = null
+      save(db)
+      notify()
+    },
+
     // ---------- Browsing ----------
     async listActive(location, radiusMiles = NEARBY_RADIUS_MILES) {
       await wait(150)
