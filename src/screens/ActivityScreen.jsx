@@ -5,6 +5,7 @@ import { useLoad } from '../lib/useLoad.js'
 import { firstName, freshness, isActive, timeAgo } from '../lib/produce.js'
 import ProduceThumb from '../components/ProduceThumb.jsx'
 import PickupDetails from '../components/PickupDetails.jsx'
+import EditListingSheet from '../components/EditListingSheet.jsx'
 
 const REQUEST_STATUS = {
   pending: 'Waiting for an answer',
@@ -25,6 +26,7 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
   const requests = useLoad(() => api.myRequests(), [refreshKey, tick])
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
+  const [editing, setEditing] = useState(null) // the listing being edited, if any
 
   async function act(id, action, message) {
     setBusyId(id)
@@ -153,15 +155,37 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
                   <p className="row-sub">
                     {status}. Posted {timeAgo(l.created_at)}.
                   </p>
-                  {(l.status === 'available' || l.status === 'claimed') && (
+                  <div className="row-actions">
+                    {l.status !== 'gone' && (
+                      <button className="btn btn-quiet btn-small" disabled={busyId === l.id} onClick={() => setEditing(l)}>
+                        Edit
+                      </button>
+                    )}
+                    {(l.status === 'available' || l.status === 'claimed') && (
+                      <button
+                        className="btn btn-quiet btn-small"
+                        disabled={busyId === l.id}
+                        onClick={() => act(l.id, () => api.setListingStatus(l.id, 'gone'), 'Marked as all gone.')}
+                      >
+                        Mark as all gone
+                      </button>
+                    )}
                     <button
                       className="btn btn-quiet btn-small"
                       disabled={busyId === l.id}
-                      onClick={() => act(l.id, () => api.setListingStatus(l.id, 'gone'), 'Marked as all gone.')}
+                      onClick={() => {
+                        const waiting = (l.requests ?? []).filter((r) => r.status === 'pending' || r.status === 'accepted').length
+                        const warning = waiting
+                          ? ` ${waiting} neighbor${waiting === 1 ? ' is' : 's are'} waiting on it and won’t be told.`
+                          : ''
+                        if (window.confirm(`Delete ${l.title}?${warning} This can’t be undone.`)) {
+                          act(l.id, () => api.deleteListing(l.id, l.photo_url), 'Listing deleted.')
+                        }
+                      }}
                     >
-                      Mark as all gone
+                      Delete
                     </button>
-                  )}
+                  </div>
                 </div>
               </li>
             )
@@ -181,6 +205,18 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
           )}
         </div>
       </div>
+
+      {editing && (
+        <EditListingSheet
+          listing={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(message) => {
+            setEditing(null)
+            onToast(message)
+            onChanged()
+          }}
+        />
+      )}
     </section>
   )
 }

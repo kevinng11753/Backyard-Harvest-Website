@@ -16,6 +16,7 @@ export default function App() {
   const [tab, setTab] = useState('nearby')
   const [location, setLocation] = useState(null)
   const [openListing, setOpenListing] = useState(null)
+  const [homeKey, setHomeKey] = useState(0) // bumping this resets the Nearby screen
   const [authMode, setAuthMode] = useState(null) // null = public home; 'signin' | 'signup' = sign-in screen
   const [toast, setToast] = useState(null)
   // Bumping this number tells every screen to reload its data.
@@ -41,6 +42,15 @@ export default function App() {
     if (user) getCurrentPosition().then(setLocation)
   }, [user])
 
+  // The wordmark at the top is the way back to the home page (Nearby):
+  // switch to it, close anything open, clear its filter, and scroll up.
+  const goHome = useCallback(() => {
+    setTab('nearby')
+    setOpenListing(null)
+    setHomeKey((k) => k + 1)
+    window.scrollTo({ top: 0 })
+  }, [])
+
   const showToast = useCallback((message) => {
     setToast({ message, id: Date.now() })
   }, [])
@@ -61,7 +71,9 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="wordmark">Backyard Harvest</span>
+        <button type="button" className="wordmark wordmark-link" aria-label="Backyard Harvest, go to the home page" onClick={goHome}>
+          Backyard Harvest
+        </button>
         {location && (
           <span className={`where ${location.precise ? '' : 'where-approx'}`}>
             {location.precise ? 'Near you' : 'Sample area'}
@@ -77,7 +89,7 @@ export default function App() {
         {!location ? (
           <p className="loading">Finding what’s growing near you…</p>
         ) : tab === 'nearby' ? (
-          <NearbyScreen location={location} userId={user.id} refreshKey={refreshKey} onOpen={setOpenListing} onPost={() => setTab('post')} />
+          <NearbyScreen key={homeKey} location={location} userId={user.id} refreshKey={refreshKey} onOpen={setOpenListing} onPost={() => setTab('post')} />
         ) : tab === 'map' ? (
           <MapScreen location={location} refreshKey={refreshKey} onOpen={setOpenListing} />
         ) : tab === 'post' ? (

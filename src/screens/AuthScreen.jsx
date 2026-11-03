@@ -36,7 +36,13 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
         </button>
       )}
       <div className="auth-hero">
-        <p className="wordmark">Backyard Harvest</p>
+        {onBack ? (
+          <button type="button" className="wordmark wordmark-link" aria-label="Backyard Harvest, go to the home page" onClick={onBack}>
+            Backyard Harvest
+          </button>
+        ) : (
+          <p className="wordmark">Backyard Harvest</p>
+        )}
         <h1>More zucchini than you can eat? Someone on your street wants it.</h1>
         <p className="auth-lede">
           Post what your garden can’t keep up with. Neighbors ask for it, you say yes, and it gets picked up

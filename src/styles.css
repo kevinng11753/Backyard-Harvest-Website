@@ -1021,3 +1021,28 @@ p {
   margin-top: 10px;
   width: 100%;
 }
+
+/* ---------- Clickable wordmark and stacked form buttons ---------- */
+.wordmark-link {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wordmark-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wordmark-link:focus-visible {
+  outline: 3px solid var(--soon);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.post-form .btn + .btn {
+  margin-top: 10px;
+  width: 100%;
+}

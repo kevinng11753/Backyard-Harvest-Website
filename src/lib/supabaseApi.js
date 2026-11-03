@@ -142,6 +142,35 @@ export function createSupabaseApi(url, anonKey) {
       check(await supabase.from('listings').update({ status }).eq('id', listingId))
     },
 
+    // The grower's own private pickup details, to fill in the edit form.
+    async getMyPickup(listingId) {
+      return check(
+        await supabase.from('listing_pickups').select('address, instructions').eq('listing_id', listingId).maybeSingle()
+      )
+    },
+
+    // Edit a listing you posted. Pickup details go first, so if that fails
+    // nothing else has changed. A write that the database refuses can come
+    // back with no error and no rows, so that's treated as a failure too.
+    async updateListing(listingId, { pickup, ...fields }) {
+      const pickupRows = check(
+        await supabase.from('listing_pickups').update(pickup).eq('listing_id', listingId).select('listing_id')
+      )
+      if (!pickupRows?.length) throw new Error('You can only edit your own listings.')
+      const rows = check(await supabase.from('listings').update(fields).eq('id', listingId).select('id'))
+      if (!rows?.length) throw new Error('You can only edit your own listings.')
+    },
+
+    // Delete a listing you posted. Its pickup details and any requests for
+    // it go with it. The photo is tidied up too, so storage doesn't fill
+    // with files nobody can see.
+    async deleteListing(listingId, photoUrl) {
+      const rows = check(await supabase.from('listings').delete().eq('id', listingId).select('id'))
+      if (!rows?.length) throw new Error('You can only delete your own listings.')
+      const path = photoPathFromUrl(photoUrl)
+      if (path) await supabase.storage.from('produce-photos').remove([path]).catch(() => {})
+    },
+
     // ---------- Requests ----------
     async myRequests() {
       const uid = await currentUserId()
@@ -176,6 +205,14 @@ export function createSupabaseApi(url, anonKey) {
       check(await supabase.rpc('cancel_request', { request_id: requestId }))
     }
   }
+}
+
+// A public photo URL ends in /produce-photos/<user id>/<file>.jpg; storage
+// needs just the part after the bucket name.
+function photoPathFromUrl(url) {
+  const marker = '/produce-photos/'
+  const i = url ? url.indexOf(marker) : -1
+  return i >= 0 ? decodeURIComponent(url.slice(i + marker.length)) : null
 }
 
 // Turn database error messages into something a neighbor can act on.

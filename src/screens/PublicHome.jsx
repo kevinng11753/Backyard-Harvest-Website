@@ -29,6 +29,13 @@ export default function PublicHome({ demo, onAuth }) {
       .map(({ l }) => l)
   }, [data, filter, location])
 
+  // The wordmark: back to the top of the home page, with nothing open or filtered.
+  function goHome() {
+    setOpen(null)
+    setFilter('all')
+    window.scrollTo({ top: 0 })
+  }
+
   async function sortByDistance() {
     setLocating(true)
     setLocationFailed(false)
@@ -41,7 +48,9 @@ export default function PublicHome({ demo, onAuth }) {
   return (
     <div className="public">
       <header className="topbar">
-        <span className="wordmark">Backyard Harvest</span>
+        <button type="button" className="wordmark wordmark-link" aria-label="Backyard Harvest, go to the home page" onClick={goHome}>
+          Backyard Harvest
+        </button>
         <span className="topbar-actions">
           <button className="btn btn-quiet btn-small" onClick={() => onAuth('signin')}>Sign in</button>
         </span>

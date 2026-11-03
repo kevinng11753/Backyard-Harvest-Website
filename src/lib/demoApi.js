@@ -287,6 +287,33 @@ export function createDemoApi() {
       save(db)
     },
 
+    async getMyPickup(listingId) {
+      const user = requireUser()
+      const listing = db.listings.find((l) => l.id === listingId && l.owner_id === user.id)
+      if (!listing) throw new Error('You can only edit your own listings.')
+      const p = db.pickups[listingId]
+      return p ? { address: p.address, instructions: p.instructions ?? null } : null
+    },
+
+    async updateListing(listingId, { pickup, ...fields }) {
+      const user = requireUser()
+      const listing = db.listings.find((l) => l.id === listingId && l.owner_id === user.id)
+      if (!listing) throw new Error('You can only edit your own listings.')
+      Object.assign(listing, fields)
+      db.pickups[listingId] = { listing_id: listingId, ...pickup }
+      save(db)
+    },
+
+    async deleteListing(listingId) {
+      const user = requireUser()
+      const listing = db.listings.find((l) => l.id === listingId && l.owner_id === user.id)
+      if (!listing) throw new Error('You can only delete your own listings.')
+      db.listings = db.listings.filter((l) => l.id !== listingId)
+      db.requests = db.requests.filter((r) => r.listing_id !== listingId)
+      delete db.pickups[listingId]
+      save(db)
+    },
+
     // ---------- Requests ----------
     async myRequests() {
       const user = requireUser()
