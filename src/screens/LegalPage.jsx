@@ -157,8 +157,9 @@ function Privacy() {
         <li>Your browser asks your permission before sharing your location. You can say no and still use the site.</li>
         <li>
           Your location is used to show what’s near you and to put your listing on the map. To find nearby listings,
-          the app asks for listings inside a square about ten miles wide around you. That request goes to our
-          database provider and may appear in its logs. We don’t keep it ourselves.
+          the app asks for listings inside a square roughly twenty miles wide. The square is centered on a rounded
+          version of your position (rounded to a grid a few miles across), so your exact position isn’t sent. That
+          request goes to our database provider and may appear in its logs. We don’t keep it ourselves.
         </li>
         <li>
           When you post, the location we save is moved by up to about 200 meters and rounded, so it never marks your

@@ -38,13 +38,37 @@ export function blurLocation({ lat, lng }) {
 // How far "nearby" reaches. Listings farther than this aren't shown.
 export const NEARBY_RADIUS_MILES = 10
 
-// A square around a point, used to ask the database for only the listings
-// that could be in range (so it never has to send the whole world).
-// The exact circle is applied afterwards with distanceMiles().
+// A square used to ask the database for only the listings that could be in
+// range (so it never has to send the whole world). The exact circle is applied
+// afterwards, on the device, with distanceMiles().
+//
+// Privacy: this square is sent over the network, so it is NOT centred on the
+// person's exact position. It's centred on the nearest point of a coarse grid
+// (about 3.5 miles apart) and made a little bigger, so it still covers the
+// whole circle around where they really are, while the real spot stays on
+// their device.
+const PRIVACY_GRID_DEGREES = 0.05
+
+const snap = (degrees) => Math.round(degrees / PRIVACY_GRID_DEGREES) * PRIVACY_GRID_DEGREES
+// Round the edges outward (never inward), so rounding can't clip the box.
+const down = (degrees) => Math.floor(degrees * 1000) / 1000
+const up = (degrees) => Math.ceil(degrees * 1000) / 1000
+
 export function boundingBox({ lat, lng }, miles = NEARBY_RADIUS_MILES) {
-  const dLat = miles / 69 // about 69 miles per degree of latitude
-  const dLng = miles / (69 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01))
-  return { minLat: lat - dLat, maxLat: lat + dLat, minLng: lng - dLng, maxLng: lng + dLng }
+  const centerLat = snap(lat)
+  const centerLng = snap(lng)
+  const pad = PRIVACY_GRID_DEGREES / 2 // the real position is within this of the rounded one
+  const latReach = miles / 69 + pad // about 69 miles per degree of latitude
+  // A degree of longitude is shorter towards the poles, so size the box using
+  // the highest latitude it reaches.
+  const highestLat = Math.min(Math.abs(centerLat) + latReach, 89)
+  const lngReach = miles / (69 * Math.max(Math.cos((highestLat * Math.PI) / 180), 0.01)) + pad
+  return {
+    minLat: down(centerLat - latReach),
+    maxLat: up(centerLat + latReach),
+    minLng: down(centerLng - lngReach),
+    maxLng: up(centerLng + lngReach)
+  }
 }
 
 // Straight-line distance between two points in miles (haversine formula).
