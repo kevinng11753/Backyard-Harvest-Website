@@ -17,7 +17,7 @@ export default function MapScreen({ location, refreshKey, onOpen }) {
     <section className="map-screen">
       <h1 className="screen-title">On the map</h1>
       <div className="map-wrap">
-        <MapContainer center={[location.lat, location.lng]} zoom={14} scrollWheelZoom className="map">
+        <MapContainer key={`${location.lat},${location.lng}`} center={[location.lat, location.lng]} zoom={14} scrollWheelZoom className="map">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

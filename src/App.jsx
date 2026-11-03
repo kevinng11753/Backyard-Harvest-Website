@@ -106,6 +106,21 @@ export default function App() {
     setToast({ message, id: Date.now() })
   }, [])
 
+  // The "Near you" / "Sample area" label at the top: tapping it asks the
+  // browser for the position again. A failed try leaves the current place alone.
+  const [locating, setLocating] = useState(false)
+  const findMe = useCallback(async () => {
+    setLocating(true)
+    const pos = await getCurrentPosition()
+    setLocating(false)
+    if (pos.precise) {
+      setLocation(pos)
+      showToast('Updated to where you are now.')
+    } else {
+      showToast('Couldn’t get your location. Allow location for this site in your browser settings, then tap again.')
+    }
+  }, [showToast])
+
   // The legal pages are open to everyone, signed in or not.
   const legalPage = { '/terms': 'terms', '/privacy': 'privacy' }[path.replace(/\/+$/, '')]
   if (legalPage) {
@@ -151,9 +166,15 @@ export default function App() {
           Backyard Harvest
         </button>
         {location && (
-          <span className={`where ${location.precise ? '' : 'where-approx'}`}>
-            {location.precise ? 'Near you' : 'Sample area'}
-          </span>
+          <button
+            type="button"
+            className={`where ${location.precise ? '' : 'where-approx'}`}
+            onClick={findMe}
+            disabled={locating}
+            title="Find my location again"
+          >
+            {locating ? 'Finding you…' : location.precise ? 'Near you' : 'Sample area'}
+          </button>
         )}
       </header>
 
