@@ -7,5 +7,5 @@ export const SITE = {
   contactEmail: '',
 
   // Change this whenever the wording of the Terms or Privacy Policy changes.
-  legalUpdated: 'November 2, 2026'
+  legalUpdated: 'November 3, 2026'
 }

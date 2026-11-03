@@ -233,6 +233,39 @@ export function createSupabaseApi(url, anonKey) {
     // so it goes through a database function rather than a plain update.
     async cancelRequest(requestId) {
       check(await supabase.rpc('cancel_request', { request_id: requestId }))
+    },
+
+    // ---------- Report and block ----------
+    // Reports go to a table that only the site's owner can read. Each one is
+    // about a listing, or about a request someone made on your own listing.
+    async reportListing(listingId, reason, note) {
+      check(await supabase.rpc('submit_report', { p_listing_id: listingId, p_request_id: null, p_reason: reason, p_note: note || null }))
+    },
+
+    async reportRequest(requestId, reason, note) {
+      check(await supabase.rpc('submit_report', { p_listing_id: null, p_request_id: requestId, p_reason: reason, p_note: note || null }))
+    },
+
+    // Blocking also ends open requests between the two people, in one step.
+    async blockUser(userId) {
+      check(await supabase.rpc('block_user', { p_user_id: userId }))
+    },
+
+    async myBlocks() {
+      const uid = await currentUserId()
+      return check(
+        await supabase
+          .from('blocks')
+          .select('blocked_id, created_at, blocked:profiles!blocked_id(display_name, neighborhood)')
+          .eq('blocker_id', uid)
+          .order('created_at', { ascending: false })
+      )
+    },
+
+    async unblockUser(userId) {
+      const uid = await currentUserId()
+      const rows = check(await supabase.from('blocks').delete().eq('blocker_id', uid).eq('blocked_id', userId).select('blocked_id'))
+      if (!rows?.length) throw new Error('That block was not found.')
     }
   }
 }
@@ -274,6 +307,8 @@ function friendlyError(message = '') {
   if (message.includes('should be different from the old password')) return 'Choose a password you haven’t used before.'
   if (message.includes('rate limit') || message.includes('security purposes'))
     return 'Too many requests right now. Wait a few minutes and try again.'
+  if (message.includes('Could not find the function'))
+    return 'This feature isn’t switched on yet. Please try again later.'
   if (message.includes('session missing') || message.includes('not authenticated'))
     return 'That reset link has expired. Ask for a new one.'
   return message || 'Something went wrong. Check your connection and try again.'

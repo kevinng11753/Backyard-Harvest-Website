@@ -23,7 +23,7 @@ function load() {
   } catch {
     // Storage is blocked or the data is damaged — start fresh.
   }
-  return { users: [], sessionUserId: null, listings: [], pickups: {}, requests: [], seeded: false }
+  return { users: [], sessionUserId: null, listings: [], pickups: {}, requests: [], blocks: [], reports: [], seeded: false }
 }
 
 function save(db) {
@@ -35,6 +35,9 @@ function save(db) {
 }
 
 let db = load()
+// Demo data saved before blocks and reports existed won't have these lists.
+db.blocks ??= []
+db.reports ??= []
 const listeners = new Set()
 const notify = (event) => listeners.forEach((fn) => fn(event))
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms))
@@ -131,6 +134,10 @@ const profileOf = (userId) => {
   return u ? { display_name: u.display_name, neighborhood: u.neighborhood } : { display_name: 'Neighbor', neighborhood: null }
 }
 const me = () => db.users.find((u) => u.id === db.sessionUserId) ?? null
+
+// Is there a block between these two people, in either direction?
+const blockedBetween = (a, b) =>
+  !!a && !!b && db.blocks.some((x) => (x.blocker_id === a && x.blocked_id === b) || (x.blocker_id === b && x.blocked_id === a))
 
 function requireUser() {
   const user = me()
@@ -245,6 +252,8 @@ export function createDemoApi() {
       db.listings = db.listings.filter((l) => !mine.has(l.id))
       mine.forEach((listingId) => delete db.pickups[listingId])
       db.requests = db.requests.filter((r) => r.requester_id !== user.id && !mine.has(r.listing_id))
+      db.blocks = db.blocks.filter((b) => b.blocker_id !== user.id && b.blocked_id !== user.id)
+      db.reports = db.reports.filter((r) => r.reporter_id !== user.id && r.reported_user_id !== user.id)
       db.users = db.users.filter((u) => u.id !== user.id)
       db.sessionUserId = null
       save(db)
@@ -261,6 +270,7 @@ export function createDemoApi() {
         db.listings
           .filter((l) => l.status === 'available' && new Date(l.expires_at).getTime() > now)
           .filter((l) => !location || distanceMiles(location, { lat: l.approx_lat, lng: l.approx_lng }) <= radiusMiles)
+          .filter((l) => !blockedBetween(db.sessionUserId, l.owner_id)) // blocked either way: out of sight
           .sort((a, b) => b.created_at.localeCompare(a.created_at))
           .map((l) => ({ ...l, owner: profileOf(l.owner_id) }))
       )
@@ -365,7 +375,8 @@ export function createDemoApi() {
             const listing = db.listings.find((l) => l.id === r.listing_id)
             return {
               ...r,
-              listing: listing ? { ...listing, owner: profileOf(listing.owner_id) } : null,
+              // Like the real database, a listing from someone you blocked (or who blocked you) is hidden.
+              listing: listing && !blockedBetween(user.id, listing.owner_id) ? { ...listing, owner: profileOf(listing.owner_id) } : null,
               // Same privacy rule as the real database: address only after acceptance.
               pickup: r.status === 'accepted' ? db.pickups[r.listing_id] ?? null : null
             }
@@ -377,7 +388,7 @@ export function createDemoApi() {
       const user = requireUser()
       await wait()
       const listing = db.listings.find((l) => l.id === listingId)
-      if (!listing || listing.status !== 'available' || new Date(listing.expires_at) <= new Date())
+      if (!listing || listing.status !== 'available' || new Date(listing.expires_at) <= new Date() || blockedBetween(user.id, listing.owner_id))
         throw new Error('This one was just claimed or has expired.')
       if (listing.owner_id === user.id) throw new Error('That’s your own listing.')
       if (db.requests.some((r) => r.listing_id === listingId && r.requester_id === user.id))
@@ -406,22 +417,116 @@ export function createDemoApi() {
       if (r.status !== 'pending' && r.status !== 'accepted') throw new Error('That request is already closed.')
       const wasAccepted = r.status === 'accepted'
       r.status = 'cancelled'
-      if (wasAccepted) {
-        // Same as the real database: reopen the listing (unless the grower
-        // already marked it gone) and bring back requests that were only
-        // declined because this one was accepted.
-        const listing = db.listings.find((l) => l.id === r.listing_id)
-        if (listing?.status === 'claimed') listing.status = 'available'
-        for (const other of db.requests) {
-          if (other.listing_id === r.listing_id && other.status === 'declined' && other.auto_declined) {
-            other.status = 'pending'
-            other.auto_declined = false
-          }
+      if (wasAccepted) reopenListing(r.listing_id)
+      save(db)
+    },
+
+    // ---------- Report and block ----------
+    async reportListing(listingId, reason, note) {
+      const user = requireUser()
+      await wait()
+      const listing = db.listings.find((l) => l.id === listingId)
+      if (!listing || listing.owner_id === user.id || blockedBetween(user.id, listing.owner_id)) throw new Error('That listing was not found.')
+      addReport(user, { listing, reason, note, content: listing.description })
+    },
+
+    async reportRequest(requestId, reason, note) {
+      const user = requireUser()
+      await wait()
+      const request = db.requests.find((r) => r.id === requestId)
+      const listing = db.listings.find((l) => l.id === request?.listing_id)
+      if (!request || listing?.owner_id !== user.id) throw new Error('That request was not found.')
+      addReport(user, { listing, request, reason, note, content: request.message })
+    },
+
+    // Blocking ends open requests between the two people, like the real thing.
+    async blockUser(userId) {
+      const user = requireUser()
+      await wait()
+      if (!userId || userId === user.id) throw new Error('You can’t block yourself.')
+      if (!db.users.some((u) => u.id === userId)) throw new Error('That person was not found.')
+      if (!db.blocks.some((b) => b.blocker_id === user.id && b.blocked_id === userId)) {
+        db.blocks.push({ blocker_id: user.id, blocked_id: userId, created_at: iso(Date.now()) })
+      }
+
+      // Requests I made on their listings: cancelled (and reopened if I'd been accepted).
+      const theirs = new Set(db.listings.filter((l) => l.owner_id === userId).map((l) => l.id))
+      for (const r of db.requests) {
+        if (r.requester_id === user.id && theirs.has(r.listing_id) && (r.status === 'pending' || r.status === 'accepted')) {
+          const wasAccepted = r.status === 'accepted'
+          r.status = 'cancelled'
+          if (wasAccepted) reopenListing(r.listing_id)
         }
       }
+
+      // Requests they made on my listings: declined, and a listing they'd been accepted for opens up again.
+      const mine = new Set(db.listings.filter((l) => l.owner_id === user.id).map((l) => l.id))
+      const freed = []
+      for (const r of db.requests) {
+        if (r.requester_id !== userId || !mine.has(r.listing_id)) continue
+        if (r.status === 'accepted') freed.push(r.listing_id)
+        if (r.status === 'pending' || r.status === 'accepted' || r.auto_declined) {
+          r.status = 'declined'
+          r.auto_declined = false
+        }
+      }
+      freed.forEach(reopenListing)
+      save(db)
+    },
+
+    async myBlocks() {
+      const user = requireUser()
+      return clone(
+        db.blocks
+          .filter((b) => b.blocker_id === user.id)
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .map((b) => ({ ...b, blocked: profileOf(b.blocked_id) }))
+      )
+    },
+
+    async unblockUser(userId) {
+      const user = requireUser()
+      const before = db.blocks.length
+      db.blocks = db.blocks.filter((b) => !(b.blocker_id === user.id && b.blocked_id === userId))
+      if (db.blocks.length === before) throw new Error('That block was not found.')
       save(db)
     }
   }
+}
+
+// Put a listing back on offer (unless the grower marked it gone), and bring
+// back requests that were declined only because another one was accepted.
+function reopenListing(listingId) {
+  const listing = db.listings.find((l) => l.id === listingId)
+  if (listing?.status === 'claimed') listing.status = 'available'
+  for (const other of db.requests) {
+    if (other.listing_id === listingId && other.status === 'declined' && other.auto_declined) {
+      other.status = 'pending'
+      other.auto_declined = false
+    }
+  }
+}
+
+// Reports are only stored in demo mode; there is no one to read them.
+function addReport(reporter, { listing, request, reason, note, content }) {
+  const duplicate = db.reports.some(
+    (r) => r.reporter_id === reporter.id && (request ? r.request_id === request.id : !r.request_id && r.listing_id === listing.id)
+  )
+  if (duplicate) throw new Error('You already reported this.')
+  const today = db.reports.filter((r) => r.reporter_id === reporter.id && Date.now() - new Date(r.created_at).getTime() < DAY)
+  if (today.length >= 10) throw new Error('You’ve sent several reports today. Please try again tomorrow.')
+  db.reports.push({
+    id: id(),
+    reporter_id: reporter.id,
+    reported_user_id: request ? request.requester_id : listing.owner_id,
+    listing_id: listing.id,
+    request_id: request?.id ?? null,
+    reason,
+    note: note?.trim() || null,
+    content: content ?? null,
+    created_at: iso(Date.now())
+  })
+  save(db)
 }
 
 // Wipes demo data (used by the "Reset demo" button).

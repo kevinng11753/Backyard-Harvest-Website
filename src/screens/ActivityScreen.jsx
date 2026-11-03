@@ -8,6 +8,7 @@ import PickupDetails from '../components/PickupDetails.jsx'
 import EditListingSheet from '../components/EditListingSheet.jsx'
 import AppLink from '../components/AppLink.jsx'
 import DeleteAccountSheet from '../components/DeleteAccountSheet.jsx'
+import SafetySheet from '../components/SafetySheet.jsx'
 
 const REQUEST_STATUS = {
   pending: 'Waiting for an answer',
@@ -26,10 +27,14 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast, o
 
   const listings = useLoad(() => api.myListings(), [refreshKey, tick])
   const requests = useLoad(() => api.myRequests(), [refreshKey, tick])
+  const blocks = useLoad(() => api.myBlocks(), [refreshKey, tick])
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null) // the listing being edited, if any
   const [deletingAccount, setDeletingAccount] = useState(false)
+  // What the report/block panel is open for, if anything:
+  // { name, userId, listingId } or { name, userId, requestId }.
+  const [safety, setSafety] = useState(null)
 
   async function act(id, action, message) {
     setBusyId(id)
@@ -85,6 +90,13 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast, o
                     Decline
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className="safety-link"
+                  onClick={() => setSafety({ name: firstName(r.requester?.display_name), userId: r.requester_id, requestId: r.id })}
+                >
+                  Report or block
+                </button>
               </div>
             </li>
           ))}
@@ -129,6 +141,17 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast, o
                     onClick={() => act(r.id, () => api.cancelRequest(r.id), 'Request cancelled.')}
                   >
                     Cancel request
+                  </button>
+                )}
+                {r.listing && (
+                  <button
+                    type="button"
+                    className="safety-link"
+                    onClick={() =>
+                      setSafety({ name: firstName(r.listing.owner?.display_name), userId: r.listing.owner_id, listingId: r.listing_id })
+                    }
+                  >
+                    Report or block
                   </button>
                 )}
               </div>
@@ -196,6 +219,37 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast, o
         </ul>
       )}
 
+      {(blocks.data ?? []).length > 0 && (
+        <>
+          <h2 className="section-title">Neighbors you blocked</h2>
+          <ul className="rows">
+            {blocks.data.map((b) => {
+              const name = firstName(b.blocked?.display_name)
+              return (
+                <li key={b.blocked_id} className="row">
+                  <div className="row-body">
+                    <p className="row-title">
+                      {name}
+                      {b.blocked?.neighborhood ? <span className="row-from"> from {b.blocked.neighborhood}</span> : null}
+                    </p>
+                    <p className="row-sub">You can’t see each other’s listings. {name} isn’t told.</p>
+                    <div className="row-actions">
+                      <button
+                        className="btn btn-quiet btn-small"
+                        disabled={busyId === b.blocked_id}
+                        onClick={() => act(b.blocked_id, () => api.unblockUser(b.blocked_id), `Unblocked ${name}.`)}
+                      >
+                        Unblock
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+
       <div className="account">
         <p>
           Signed in as <strong>{user.display_name}</strong>
@@ -217,6 +271,18 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast, o
 
       {deletingAccount && (
         <DeleteAccountSheet onClose={() => setDeletingAccount(false)} onDeleted={onAccountDeleted} />
+      )}
+
+      {safety && (
+        <SafetySheet
+          {...safety}
+          onClose={() => setSafety(null)}
+          onDone={(message) => {
+            setSafety(null)
+            onToast(message)
+            onChanged()
+          }}
+        />
       )}
 
       {editing && (

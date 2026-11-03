@@ -91,6 +91,14 @@ function Terms() {
         listing at any time, which removes it from the site.
       </p>
 
+      <h2>Reporting and blocking</h2>
+      <p>
+        If a listing or a request worries you, use <strong>Report or block</strong> on it. A report is read by the
+        person who runs {SITE.name}, and the person you reported isn’t told it came from you. Blocking a neighbor
+        hides your listings from each other, stops you asking each other for produce, and ends any open requests
+        between you. Blocking is your own choice and doesn’t need a reason. You can undo it in the Activity tab.
+      </p>
+
       <h2>Our right to step in</h2>
       <p>
         We may remove listings, or suspend or close accounts, that break these rules or put people at risk, and we may
@@ -147,6 +155,11 @@ function Privacy() {
           <strong>What you request:</strong> which listings you ask for, and the short note you can include.
         </li>
         <li>
+          <strong>Reports and blocks:</strong> if you report a listing or request, we keep the reason, your note, and a
+          copy of the listing text or request message you reported, along with the names of the two people. If you block
+          a neighbor, we keep that you did.
+        </li>
+        <li>
           <strong>Technical details:</strong> like your IP address and device type, which our hosting and database
           providers receive whenever you use the site and may keep in their security and traffic logs.
         </li>
@@ -191,6 +204,13 @@ function Privacy() {
           <strong>The pickup address and instructions:</strong> only the grower and the one neighbor they accept.
         </li>
         <li>
+          <strong>Reports:</strong> only the people who run {SITE.name}. The person you reported can’t see them.
+        </li>
+        <li>
+          <strong>Blocks:</strong> only you. The neighbor you blocked isn’t told, though they will no longer see your
+          listings.
+        </li>
+        <li>
           <strong>The people who run {SITE.name}:</strong> can access the database in order to run and fix the
           service. We only look at private details when we need to, such as to deal with a report or a problem.
         </li>
@@ -231,8 +251,9 @@ function Privacy() {
         <li>Listings that expire stop showing up, but aren’t removed automatically. You can delete them yourself.</li>
         <li>
           You can delete your account yourself: open the Activity tab and choose Delete my account. That removes your
-          profile and sign-in, every listing you posted with its photo and pickup details, and your requests.
-          Providers may keep routine backups for a short while.
+          profile and sign-in, every listing you posted with its photo and pickup details, your requests, the people
+          you blocked, and any reports you sent or that were made about you. Providers may keep routine backups for a
+          short while.
           {SITE.contactEmail ? ' If you can’t sign in, write to the contact below and we’ll help.' : ''}
         </li>
       </ul>
