@@ -82,6 +82,13 @@ export function createSupabaseApi(url, anonKey) {
       )
     },
 
+    // The signed-out home page. Works without an account: a database function
+    // hands back open listings with only the grower's first name and a
+    // coarse area, never the pickup address.
+    async listPublic() {
+      return check(await supabase.rpc('public_listings')) ?? []
+    },
+
     // ---------- Your listings ----------
     async myListings() {
       const uid = await currentUserId()

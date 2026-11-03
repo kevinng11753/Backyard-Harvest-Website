@@ -198,12 +198,6 @@ p {
   font-size: 0.92rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .btn-primary {
-    color: #0d1a11;
-  }
-}
-
 /* ---------- Form fields ---------- */
 .field {
   display: block;
@@ -363,12 +357,6 @@ p {
   background: var(--leaf);
   border-color: var(--leaf);
   color: #fff;
-}
-
-@media (prefers-color-scheme: dark) {
-  .chip-on {
-    color: #0d1a11;
-  }
 }
 
 /* ---------- Listing cards ---------- */
@@ -797,12 +785,6 @@ p {
   color: #fff;
 }
 
-@media (prefers-color-scheme: dark) {
-  .seg-on {
-    color: #0d1a11;
-  }
-}
-
 .private {
   margin: 22px 0 18px;
   padding: 16px 16px 2px;
@@ -964,12 +946,6 @@ p {
   margin-top: -6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .tab-share svg {
-    color: #0d1a11;
-  }
-}
-
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
@@ -985,4 +961,63 @@ p {
   color: var(--bg);
   font-weight: 700;
   font-size: 0.92rem;
+}
+
+/* ---------- Public home (signed out) ---------- */
+.public {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.public-hero {
+  padding: 4px 16px 8px;
+}
+
+.public-hero h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 7vw, 2.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 6px 0 10px;
+  max-width: 16ch;
+}
+
+.public-hero p {
+  color: var(--muted);
+  max-width: 46ch;
+  margin-bottom: 16px;
+}
+
+.public-cta .btn-primary {
+  width: auto;
+}
+
+.public-locate {
+  margin: 4px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-foot {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.auth-back {
+  margin-bottom: 4px;
+}
+
+.sheet-action .btn + .btn {
+  margin-top: 10px;
+  width: 100%;
 }

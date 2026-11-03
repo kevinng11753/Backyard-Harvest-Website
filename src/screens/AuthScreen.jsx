@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 
-export default function AuthScreen({ demo }) {
-  const [mode, setMode] = useState('signup') // 'signup' | 'signin'
+export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
+  const [mode, setMode] = useState(initialMode) // 'signup' | 'signin'
   const [form, setForm] = useState({ displayName: '', neighborhood: '', email: '', password: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -30,6 +30,11 @@ export default function AuthScreen({ demo }) {
 
   return (
     <div className="auth">
+      {onBack && (
+        <button type="button" className="btn btn-quiet btn-small auth-back" onClick={onBack}>
+          ← Back to listings
+        </button>
+      )}
       <div className="auth-hero">
         <p className="wordmark">Backyard Harvest</p>
         <h1>More zucchini than you can eat? Someone on your street wants it.</h1>

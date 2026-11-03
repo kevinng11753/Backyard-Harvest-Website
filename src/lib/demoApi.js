@@ -227,6 +227,23 @@ export function createDemoApi() {
       )
     },
 
+    // The signed-out home page: open listings, first names only, no owner ids.
+    async listPublic() {
+      await wait(150)
+      await seedIfNeeded()
+      autoAnswerRequests()
+      const now = Date.now()
+      return clone(
+        db.listings
+          .filter((l) => l.status === 'available' && new Date(l.expires_at).getTime() > now)
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .map(({ owner_id, ...l }) => ({
+            ...l,
+            owner: { display_name: profileOf(owner_id).display_name.split(' ')[0] }
+          }))
+      )
+    },
+
     // ---------- Your listings ----------
     async myListings() {
       const user = requireUser()

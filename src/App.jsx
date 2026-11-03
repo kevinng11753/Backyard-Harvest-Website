@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './lib/api.js'
 import { getCurrentPosition } from './lib/geo.js'
 import AuthScreen from './screens/AuthScreen.jsx'
+import PublicHome from './screens/PublicHome.jsx'
 import NearbyScreen from './screens/NearbyScreen.jsx'
 import MapScreen from './screens/MapScreen.jsx'
 import PostScreen from './screens/PostScreen.jsx'
@@ -15,6 +16,7 @@ export default function App() {
   const [tab, setTab] = useState('nearby')
   const [location, setLocation] = useState(null)
   const [openListing, setOpenListing] = useState(null)
+  const [authMode, setAuthMode] = useState(null) // null = public home; 'signin' | 'signup' = sign-in screen
   const [toast, setToast] = useState(null)
   // Bumping this number tells every screen to reload its data.
   const [refreshKey, setRefreshKey] = useState(0)
@@ -22,7 +24,14 @@ export default function App() {
 
   // Who is signed in? Check now, and again whenever that changes.
   useEffect(() => {
-    const load = () => api.getUser().then(setUser).catch(() => setUser(null))
+    const load = () =>
+      api
+        .getUser()
+        .then((u) => {
+          setUser(u)
+          if (u) setAuthMode(null) // signed in: leave the sign-in screen behind
+        })
+        .catch(() => setUser(null))
     load()
     return api.onAuthChange(load)
   }, [])
@@ -41,7 +50,12 @@ export default function App() {
   }
 
   if (!user) {
-    return <AuthScreen demo={api.mode === 'demo'} />
+    // Signed out: show the public listings, and the sign-in screen only
+    // once they choose to sign in or create an account.
+    if (authMode) {
+      return <AuthScreen demo={api.mode === 'demo'} initialMode={authMode} onBack={() => setAuthMode(null)} />
+    }
+    return <PublicHome demo={api.mode === 'demo'} onAuth={setAuthMode} />
   }
 
   return (
