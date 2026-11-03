@@ -5,6 +5,7 @@ import { distanceMiles, getCurrentPosition } from '../lib/geo.js'
 import { CATEGORIES } from '../lib/produce.js'
 import ListingCard from '../components/ListingCard.jsx'
 import PublicListingSheet from '../components/PublicListingSheet.jsx'
+import AppLink from '../components/AppLink.jsx'
 
 // The home page for people who aren't signed in: everything that's
 // available right now. Looking is open to anyone; asking needs an account.
@@ -131,6 +132,9 @@ export default function PublicHome({ demo, onAuth }) {
 
         <p className="note small public-foot">
           Exact pickup addresses are never shown here. Growers share them only with the neighbor they say yes to.
+        </p>
+        <p className="note small public-foot">
+          <AppLink to="/terms">Terms</AppLink> · <AppLink to="/privacy">Privacy</AppLink>
         </p>
       </main>
 

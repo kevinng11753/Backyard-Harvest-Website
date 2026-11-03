@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, resetLinkExpired } from '../lib/api.js'
+import AppLink from '../components/AppLink.jsx'
 
 export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
   const [mode, setMode] = useState(initialMode) // 'signup' | 'signin' | 'forgot'
@@ -8,6 +9,7 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
   const [error, setError] = useState(null)
   const [checkEmail, setCheckEmail] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  const [agreed, setAgreed] = useState(false) // must be ticked to create an account
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
@@ -132,6 +134,16 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
                 value={form.password}
                 onChange={set('password')}
               />
+            </label>
+          )}
+
+          {mode === 'signup' && (
+            <label className="agree">
+              <input type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                I agree to the <AppLink to="/terms" newTab>Terms of Use</AppLink> and{' '}
+                <AppLink to="/privacy" newTab>Privacy Policy</AppLink>.
+              </span>
             </label>
           )}
 

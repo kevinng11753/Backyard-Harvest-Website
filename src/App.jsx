@@ -3,6 +3,8 @@ import { api, startedInRecovery, resetLinkExpired } from './lib/api.js'
 import { getCurrentPosition } from './lib/geo.js'
 import AuthScreen from './screens/AuthScreen.jsx'
 import ResetPasswordScreen from './screens/ResetPasswordScreen.jsx'
+import LegalPage from './screens/LegalPage.jsx'
+import { navigate, NAV_EVENT } from './lib/nav.js'
 import PublicHome from './screens/PublicHome.jsx'
 import NearbyScreen from './screens/NearbyScreen.jsx'
 import MapScreen from './screens/MapScreen.jsx'
@@ -50,6 +52,19 @@ export default function App() {
     })
   }, [])
 
+  // Two pages have their own address: /terms and /privacy. Follow the address
+  // bar, including the browser's back and forward buttons.
+  const [path, setPath] = useState(window.location.pathname)
+  useEffect(() => {
+    const sync = () => setPath(window.location.pathname)
+    window.addEventListener('popstate', sync)
+    window.addEventListener(NAV_EVENT, sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener(NAV_EVENT, sync)
+    }
+  }, [])
+
   // Once an expired reset link has been noticed, drop its leftovers from the address bar.
   useEffect(() => {
     if (resetLinkExpired) clearAddressHash()
@@ -85,6 +100,12 @@ export default function App() {
   const showToast = useCallback((message) => {
     setToast({ message, id: Date.now() })
   }, [])
+
+  // The legal pages are open to everyone, signed in or not.
+  const legalPage = { '/terms': 'terms', '/privacy': 'privacy' }[path.replace(/\/+$/, '')]
+  if (legalPage) {
+    return <LegalPage kind={legalPage} onBack={() => navigate('/')} />
+  }
 
   if (user === undefined) {
     return <div className="splash" aria-busy="true">Backyard Harvest</div>

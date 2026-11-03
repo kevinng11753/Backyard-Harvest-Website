@@ -6,6 +6,7 @@ import { firstName, freshness, isActive, timeAgo } from '../lib/produce.js'
 import ProduceThumb from '../components/ProduceThumb.jsx'
 import PickupDetails from '../components/PickupDetails.jsx'
 import EditListingSheet from '../components/EditListingSheet.jsx'
+import AppLink from '../components/AppLink.jsx'
 
 const REQUEST_STATUS = {
   pending: 'Waiting for an answer',
@@ -197,6 +198,9 @@ export default function ActivityScreen({ user, refreshKey, onChanged, onToast })
         <p>
           Signed in as <strong>{user.display_name}</strong>
           {user.email ? ` (${user.email})` : ''}
+        </p>
+        <p className="small account-legal">
+          <AppLink to="/terms">Terms of Use</AppLink> · <AppLink to="/privacy">Privacy Policy</AppLink>
         </p>
         <div className="row-actions">
           <button className="btn btn-quiet btn-small" onClick={() => api.signOut()}>Sign out</button>
