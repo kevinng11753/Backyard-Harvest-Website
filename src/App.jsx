@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api } from './lib/api.js'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, startedInRecovery, resetLinkExpired } from './lib/api.js'
 import { getCurrentPosition } from './lib/geo.js'
 import AuthScreen from './screens/AuthScreen.jsx'
+import ResetPasswordScreen from './screens/ResetPasswordScreen.jsx'
 import PublicHome from './screens/PublicHome.jsx'
 import NearbyScreen from './screens/NearbyScreen.jsx'
 import MapScreen from './screens/MapScreen.jsx'
@@ -11,13 +12,22 @@ import ListingSheet from './components/ListingSheet.jsx'
 import TabBar from './components/TabBar.jsx'
 import Toast from './components/Toast.jsx'
 
+// Remove "#access_token=…&type=recovery" (or an error) from the address bar.
+function clearAddressHash() {
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = still checking
   const [tab, setTab] = useState('nearby')
   const [location, setLocation] = useState(null)
   const [openListing, setOpenListing] = useState(null)
   const [homeKey, setHomeKey] = useState(0) // bumping this resets the Nearby screen
-  const [authMode, setAuthMode] = useState(null) // null = public home; 'signin' | 'signup' = sign-in screen
+  // null = public home; 'signin' | 'signup' | 'forgot' = the sign-in screen.
+  // An expired reset link lands straight on the "forgot password" form.
+  const [authMode, setAuthMode] = useState(resetLinkExpired ? 'forgot' : null)
+  // True while someone who followed a reset email is choosing a new password.
+  const [recovering, setRecovering] = useState(startedInRecovery)
   const [toast, setToast] = useState(null)
   // Bumping this number tells every screen to reload its data.
   const [refreshKey, setRefreshKey] = useState(0)
@@ -34,7 +44,28 @@ export default function App() {
         })
         .catch(() => setUser(null))
     load()
-    return api.onAuthChange(load)
+    return api.onAuthChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+      load()
+    })
+  }, [])
+
+  // Once an expired reset link has been noticed, drop its leftovers from the address bar.
+  useEffect(() => {
+    if (resetLinkExpired) clearAddressHash()
+  }, [])
+
+  // The reset link should sign the person in within moments. If it never does
+  // (a bad link), don't leave "choosing a new password" switched on, or the
+  // next normal sign-in would be sent to that screen by mistake.
+  const userRef = useRef(user)
+  userRef.current = user
+  useEffect(() => {
+    if (!startedInRecovery) return undefined
+    const timer = setTimeout(() => {
+      if (!userRef.current) setRecovering(false)
+    }, 15000)
+    return () => clearTimeout(timer)
   }, [])
 
   // Find where the person is once they're signed in.
@@ -57,6 +88,19 @@ export default function App() {
 
   if (user === undefined) {
     return <div className="splash" aria-busy="true">Backyard Harvest</div>
+  }
+
+  // Followed a reset email: they're signed in by the link, so first ask for the new password.
+  if (user && recovering) {
+    return (
+      <ResetPasswordScreen
+        onDone={(message) => {
+          setRecovering(false)
+          clearAddressHash()
+          if (message) showToast(message)
+        }}
+      />
+    )
   }
 
   if (!user) {

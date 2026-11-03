@@ -1046,3 +1046,22 @@ p {
   margin-top: 10px;
   width: 100%;
 }
+
+/* ---------- Text-style button (e.g. Forgot your password?) ---------- */
+.link-button {
+  display: block;
+  margin: -6px 0 14px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  color: var(--leaf);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.panel .btn + .btn {
+  margin-top: 10px;
+  width: 100%;
+}

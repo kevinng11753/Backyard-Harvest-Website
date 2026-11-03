@@ -37,7 +37,8 @@ export function createSupabaseApi(url, anonKey) {
     },
 
     onAuthChange(callback) {
-      const { data } = supabase.auth.onAuthStateChange(() => callback())
+      // The event name is passed along so the app can notice PASSWORD_RECOVERY.
+      const { data } = supabase.auth.onAuthStateChange((event) => callback(event))
       return () => data.subscription.unsubscribe()
     },
 
@@ -60,6 +61,17 @@ export function createSupabaseApi(url, anonKey) {
 
     async signOut() {
       await supabase.auth.signOut()
+    },
+
+    // Emails a reset link. The result is the same whether or not the address
+    // has an account, so this can't be used to find out who has signed up.
+    async requestPasswordReset(email) {
+      check(await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin }))
+    },
+
+    // For the "choose a new password" screen, reached by following that email.
+    async updatePassword(password) {
+      check(await supabase.auth.updateUser({ password }))
     },
 
     // ---------- Browsing ----------
@@ -224,5 +236,10 @@ function friendlyError(message = '') {
   if (message.includes('Invalid login credentials')) return 'That email and password don’t match.'
   if (message.includes('User already registered')) return 'That email already has an account. Sign in instead.'
   if (message.includes('Password should be')) return 'Use a password with at least 6 characters.'
+  if (message.includes('should be different from the old password')) return 'Choose a password you haven’t used before.'
+  if (message.includes('rate limit') || message.includes('security purposes'))
+    return 'Too many requests right now. Wait a few minutes and try again.'
+  if (message.includes('session missing') || message.includes('not authenticated'))
+    return 'That reset link has expired. Ask for a new one.'
   return message || 'Something went wrong. Check your connection and try again.'
 }

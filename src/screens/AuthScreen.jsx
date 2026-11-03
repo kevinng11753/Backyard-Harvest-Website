@@ -1,21 +1,28 @@
 import { useState } from 'react'
-import { api } from '../lib/api.js'
+import { api, resetLinkExpired } from '../lib/api.js'
 
 export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
-  const [mode, setMode] = useState(initialMode) // 'signup' | 'signin'
+  const [mode, setMode] = useState(initialMode) // 'signup' | 'signin' | 'forgot'
   const [form, setForm] = useState({ displayName: '', neighborhood: '', email: '', password: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [checkEmail, setCheckEmail] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+
+  // Arrived by an emailed reset link that no longer works.
+  const expiredNotice = initialMode === 'forgot' && resetLinkExpired
 
   async function submit(e) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        await api.requestPasswordReset(form.email)
+        setResetSent(true)
+      } else if (mode === 'signup') {
         const { needsConfirmation } = await api.signUp(form)
         if (needsConfirmation) setCheckEmail(true)
       } else {
@@ -26,6 +33,11 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  function goTo(next) {
+    setMode(next)
+    setError(null)
   }
 
   return (
@@ -50,7 +62,18 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
         </p>
       </div>
 
-      {checkEmail ? (
+      {resetSent ? (
+        <div className="panel">
+          <h2>Check your email</h2>
+          <p>
+            If there’s an account for {form.email}, we’ve sent a link to choose a new password. Open it on this
+            device. It can take a minute, and it may land in spam.
+          </p>
+          <button className="btn btn-quiet" onClick={() => { setResetSent(false); goTo('signin') }}>
+            Back to sign in
+          </button>
+        </div>
+      ) : checkEmail ? (
         <div className="panel">
           <h2>Check your email</h2>
           <p>We sent a link to {form.email}. Open it to finish creating your account, then sign in here.</p>
@@ -60,14 +83,26 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
         </div>
       ) : (
         <form className="panel" onSubmit={submit}>
-          <div className="switch" role="tablist">
-            <button type="button" role="tab" aria-selected={mode === 'signup'} onClick={() => setMode('signup')}>
-              Create account
-            </button>
-            <button type="button" role="tab" aria-selected={mode === 'signin'} onClick={() => setMode('signin')}>
-              Sign in
-            </button>
-          </div>
+          {mode === 'forgot' ? (
+            <>
+              <h2>Reset your password</h2>
+              {expiredNotice && (
+                <p className="error" role="alert">
+                  That reset link has expired or was already used. Enter your email to get a new one.
+                </p>
+              )}
+              <p className="note">Enter the email you signed up with and we’ll send you a link to choose a new password.</p>
+            </>
+          ) : (
+            <div className="switch" role="tablist">
+              <button type="button" role="tab" aria-selected={mode === 'signup'} onClick={() => goTo('signup')}>
+                Create account
+              </button>
+              <button type="button" role="tab" aria-selected={mode === 'signin'} onClick={() => goTo('signin')}>
+                Sign in
+              </button>
+            </div>
+          )}
 
           {mode === 'signup' && (
             <>
@@ -86,27 +121,47 @@ export default function AuthScreen({ demo, initialMode = 'signup', onBack }) {
             <span>Email</span>
             <input required type="email" autoComplete="email" value={form.email} onChange={set('email')} />
           </label>
-          <label className="field">
-            <span>Password</span>
-            <input
-              required
-              type="password"
-              minLength={6}
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              value={form.password}
-              onChange={set('password')}
-            />
-          </label>
+          {mode !== 'forgot' && (
+            <label className="field">
+              <span>Password</span>
+              <input
+                required
+                type="password"
+                minLength={6}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                value={form.password}
+                onChange={set('password')}
+              />
+            </label>
+          )}
+
+          {mode === 'signin' && (
+            <button type="button" className="link-button" onClick={() => goTo('forgot')}>
+              Forgot your password?
+            </button>
+          )}
 
           {error && <p className="error" role="alert">{error}</p>}
 
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'One moment…' : mode === 'signup' ? 'Create account' : 'Sign in'}
+            {busy
+              ? 'One moment…'
+              : mode === 'signup'
+                ? 'Create account'
+                : mode === 'forgot'
+                  ? 'Send reset link'
+                  : 'Sign in'}
           </button>
+          {mode === 'forgot' && (
+            <button type="button" className="btn btn-quiet" onClick={() => goTo('signin')} disabled={busy}>
+              Back to sign in
+            </button>
+          )}
 
           {demo && (
             <p className="note small">
               Demo mode: accounts and listings are saved only in this browser, so you can try everything safely.
+              {mode === 'forgot' && ' No email is sent here, so the reset link opens right away.'}
             </p>
           )}
         </form>

@@ -36,7 +36,7 @@ function save(db) {
 
 let db = load()
 const listeners = new Set()
-const notify = () => listeners.forEach((fn) => fn())
+const notify = (event) => listeners.forEach((fn) => fn(event))
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms))
 
 // ---------- Sample neighborhood ----------
@@ -210,6 +210,28 @@ export function createDemoApi() {
       db.sessionUserId = null
       save(db)
       notify()
+    },
+
+    // Demo mode can't send email, so the "link" opens straight away, the way
+    // following it from an inbox would. Unknown addresses do nothing, same
+    // as the real thing.
+    async requestPasswordReset(email) {
+      await wait()
+      const user = db.users.find((u) => u.email === email.trim().toLowerCase())
+      if (user) {
+        db.sessionUserId = user.id
+        save(db)
+        notify('PASSWORD_RECOVERY')
+      }
+    },
+
+    async updatePassword(password) {
+      const user = requireUser()
+      await wait()
+      if (password.length < 6) throw new Error('Use a password with at least 6 characters.')
+      user.password = password
+      save(db)
+      notify('USER_UPDATED')
     },
 
     // ---------- Browsing ----------
